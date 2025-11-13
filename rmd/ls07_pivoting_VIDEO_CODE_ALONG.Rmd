@@ -7,6 +7,8 @@ output:
     toc_float: true
     css: !expr here::here("global/style/style.css")
     highlight: kate
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r, eval = F, include = F}
@@ -60,7 +62,7 @@ pacman::p_load(tidyverse, outbreaks, janitor, rio, here, knitr)
 
 -   Example 1: blood pressure data from three patients on three days.
 
-    WIDE format:
+WIDE format:
 
 ![Fig: wide dataset for a timeseries of patients.](images/wide_patients.png){width="500"}
 
@@ -106,6 +108,9 @@ For example:
 -   a country
 
 -   a hospital
+
+WIDE datasets have different observational units in defined columns
+LONG datasets have different observational units in defined rows
 :::
 
 ------------------------------------------------------------------------
@@ -129,7 +134,7 @@ Is this data in a wide or long format?
 # Enter the string wide or the string long
 # Assign your answer to the object Q_data_type
 # Then run the CHECK function below
-Q_data_type <- "_____"
+Q_data_type <- "WIDE"
 ```
 
 ```{r, include = FALSE}
@@ -171,7 +176,7 @@ Q_data_type <- "_____"
 
 ```{r}
 infant_deaths_wide <- read_csv(here("data/gapminder_infant_deaths.csv"))
-infant_deaths_wide
+view(infant_deaths_wide)
 ```
 
 ------------------------------------------------------------------------
@@ -190,8 +195,9 @@ infant_deaths_wide
 
 ```{r}
 infant_deaths_wide %>% 
+  pivot_longer(cols = x2010:x2015)
   # we pivot longer the columns x2010 to x2015
-  
+  # new columns created with names "name" and "value"
 ```
 
 ------------------------------------------------------------------------
@@ -218,8 +224,8 @@ infant_deaths_wide %>%
 infant_deaths_wide %>% 
   # we will set our names to "year" and the values to "death_counts"
   pivot_longer(cols = x2010:x2015,
-               names_to = , 
-               values_to = )
+               names_to = "year", 
+               values_to = "deaths_count")
 ```
 
 ------------------------------------------------------------------------
@@ -245,6 +251,7 @@ infant_deaths_wide %>%
   pivot_longer(cols = x2010:x2015,
                names_to = "year", 
                values_to = "deaths_count") %>%
+  mutate(year = parse_number(year))
   # we use parse_number inside of mutate
   
 ```
@@ -276,7 +283,10 @@ The data is in a wide format. Convert it to a long format, with the following co
 
 ```{r, eval = FALSE}
 Q_euro_births_long <- 
-  euro_births_wide %>% # complete the code with your answer
+  euro_births_wide %>%
+  pivot_longer(cols = x2015:x2021,
+               names_to = "year",
+               values_to = "births_count")
 ```
 
 ```{r, include = FALSE}
@@ -303,17 +313,16 @@ Q_euro_births_long <-
 
 -   Let's see an example of this now.
 
--   Datase of patient records from an Ebola outbreak in Sierra Leone in 2014
+-   Dataset of patient records from an Ebola outbreak in Sierra Leone in 2014
 
 -   We extract this data from the {outbreaks} package and perform some simplifying manipulations on it.
 
 ```{r}
 ebola <- 
-  outbreaks::ebola_sierraleone_2014 %>% 
-  _________________ 
-  _________________
-  _________________
-  
+  outbreaks::ebola_sierraleone_2014 %>%
+  as_tibble() %>% 
+  mutate(year = lubridate::year(date_of_onset)) %>%  # extract year from the date
+  select(patient_id = id, district, year_of_onset = year)  # selects and rename columns
 ```
 
 Now, consider the following grouped summary of the `ebola` dataset, which counts the number of patients recorded in each district in each year:
@@ -321,8 +330,8 @@ Now, consider the following grouped summary of the `ebola` dataset, which counts
 ```{r}
 cases_per_district_per_year <- 
   ebola %>% 
-  group_by(____________) %>% 
-  count(____________) %>% 
+  group_by(district) %>% 
+  count(year_of_onset) %>% 
   ungroup()
 
 cases_per_district_per_year
@@ -338,8 +347,8 @@ cases_per_district_per_year
 
 ```{r}
 cases_per_district_per_year %>% 
-  pivot_wider(_______________________, 
-              _______________________)
+  pivot_wider(values_from = n, 
+              names_from = year_of_onset)
 ```
 
 ::: practice
@@ -349,7 +358,9 @@ Pivot this data into a wide format. Your answer should have 20 columns and 219 r
 
 ```{r, eval = FALSE}
 Q_population_widen <- 
-  tidyr::population
+  tidyr::population %>% 
+  pivot_wider(names_from = year,
+              values_from = population)
 ```
 
 ```{r, include = FALSE}
@@ -384,12 +395,12 @@ Easy right? We can easily see, for example, that Afghanistan had its highest inf
 
 -   Answering the same question with wide data:
 
--   You could try an approach like this with rowise():
+-   You could try an approach like this with rowwise():
 
 ```{r}
 infant_deaths_wide %>% 
   rowwise() %>% 
-  mutate(max_count = max(__________________________))
+  mutate(max_count = max(x2010, x2011, x2012, x2013, x2014, x2015))
 ```
 
 This works, but we still don't know which year is attached to that value in `max_count`. We would have to take that value and index it back to its respective year column... what a hassle! There are solutions to find this but all are very painful. Why make your life complicated when you can just pivot to long format and use the beauty of `group_by()` and `filter()`?
@@ -412,7 +423,10 @@ For this practice question, you will perform a grouped filter on the long format
 
 ```{r, eval = FALSE}
 Q_population_max <- 
-  population 
+  population %>% 
+  group_by(country) %>% 
+  filter(population == max(population)) %>% 
+  ungroup()
 ```
 
 ```{r, include = FALSE}
@@ -423,9 +437,9 @@ Q_population_max <-
 
 ## Summarizing grouped data
 
--   Grouped summaries are also difficult to perform on wide data. 
+-   Grouped summaries are also difficult to perform on wide data.
 
--   Example: Using the `infant_deaths_long` dataset once again, if you want to ask: 
+-   Example: Using the `infant_deaths_long` dataset once again, if you want to ask:
 
 -   **For each country, what was the mean number of infant deaths and the standard deviation (variation) in deaths ?**
 
@@ -433,9 +447,9 @@ Q_population_max <-
 
 ```{r}
 infant_deaths_long %>% 
-  group_by(___________-) %>% 
-  summarize(__________ = mean(__________), 
-            __________ = sd(__________))
+  group_by(country) %>% 
+  summarize(mean_deaths = mean(deaths_count), 
+            sd_deaths = sd(deaths_count))
 ```
 
 With wide data, on the other hand, finding the mean is less intuitive...
@@ -456,7 +470,11 @@ Use `group_by()` and `summarize()` to obtain, for each country, the maximum repo
 
 ```{r, eval = FALSE}
 Q_population_summaries <- 
-  population
+  population %>% 
+  group_by(country) %>% 
+  summarize(max_population = max(population),
+            min_population = min(population),
+            mean_population = mean(population))
 ```
 
 ```{r, include = FALSE}
