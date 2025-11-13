@@ -8,7 +8,7 @@ output:
     css: !expr here::here("global/style/style.css")
     highlight: kate
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
   markdown: 
     wrap: 72
 ---
@@ -59,21 +59,23 @@ pacman::p_load(tidyverse, countrycode)
 ‣ `demographic`: Contains names and ages of three patients
 
 ```{r}
-________________ <- 
+demographic <- 
   tribble(~name,     ~age,
           "Alice",    25,
           "Bob",      32,
           "Charlie",  45)
+demographic
 ```
 
 ‣ `test_info`: Contains tuberculosis test dates and results for those patients
 
 ```{r}
-______________ <- 
+test_info <- 
   tribble(~name,     ~test_date,    ~result,
           "Alice",   "2023-06-05",  "Negative",
           "Bob",     "2023-08-10",  "Positive",
           "Charlie", "2023-07-15",  "Negative")
+test_info
 ```
 
 ‣ We'd like to **analyze these data together**, thus we need to combine them.
@@ -81,7 +83,7 @@ ______________ <-
 
 ```{r}
 # Use the cbind function
-________(demographic, test_info)
+cbind(demographic, test_info)  # Simply combine data sets by appending columns
 ```
 
 ‣ Issue: **Name column appears twice**
@@ -97,7 +99,7 @@ test_info_disordered <-
           "Alice",   "2023-06-05",  "Negative",
           "Charlie", "2023-07-15",  "Negative")
 test_info_disordered
-cbind(demographic, test_info_disordered)
+cbind(demographic, test_info_disordered)  # Produces an invalid dataset
 ```
 
 ‣ The data is combined incorrectly. Very naive
@@ -119,7 +121,7 @@ test_info_multiple
 ‣ `cbind()` would not work here due to a mismatch in row counts:
 
 ```{r eval = F}
-cbind(demographic, test_info_multiple)
+cbind(demographic, test_info_multiple)  # Error due to mismatch in number of rows in the two data frames
 ```
 
 **Vocab Time**
@@ -135,7 +137,7 @@ cbind(demographic, test_info_multiple)
 ‣ **Simple Case**: Works when datasets are perfectly matched.
 
 ```{r}
-left_join(________________, ________________)
+left_join(demographic, test_info)
 ```
 
 ‣ Does not duplicate the name column.
@@ -143,13 +145,13 @@ left_join(________________, ________________)
 ‣ **Disordered Data**: Works even if the datasets are not in the same order
 
 ```{r}
-left_join(demographic, ________________)
+left_join(demographic, test_info_disordered)
 ```
 
 ‣ **One to Many**: Can handle multiple entries for a single entity
 
 ```{r}
-left_join(demographic, ________________)
+left_join(demographic, test_info_multiple)
 ```
 
 ‣ **Efficiency and Clarity**: Simple yet powerful
@@ -171,8 +173,8 @@ left_join(demographic, test_info)
 
 ```{r eval = FALSE}
 # Let's try both ways:
-left_join(________________________) # named
-left_join(________________________) # unnamed
+left_join(x = demographic, y = test_info) # named
+left_join(demographic, test_info) # unnamed
 ```
 
 ‣ The `by` argument indicates the **key** for connecting tables. Sometimes it is not needed:
@@ -180,7 +182,7 @@ left_join(________________________) # unnamed
 ```{r eval = F}
 # these are equivalent
 left_join(x = demographic, y = test_info)  
-left_join(x = demographic, y = test_info, ________)
+left_join(x = demographic, y = test_info, by = "name")  # Specifies the column that should be the key when combining data sets
 ```
 
 ‣ Sometimes, it's not necessary to supply `by`; it can be **inferred** from common columns.
@@ -194,18 +196,18 @@ left_join(________________________)
 ‣ `by` is sometimes required: what if keys are **named differently** in the two datasets?
 
 ```{r}
-___________________ <- 
+test_info_different_name <- 
   tribble(~test_recipient,   ~test_date,       ~result, # replace `name` with different word
           "Alice",     "2023-06-05",  "Negative",
           "Bob",       "2023-08-10",  "Positive",
           "Charlie",   "2023-07-15",  "Negative")
-___________________
+test_info_different_name
 ```
 
 ‣ Attempting to join `test_info_different_name` with `demographic` will lead to an error:
 
 ```{r eval = FALSE}
-left_join(________________, ________________)
+left_join(demographic, test_info_different_name)
 ```
 
 ‣ **Why? No obvious key**
@@ -244,6 +246,11 @@ checkups <- tribble(
 ```
 
 Join the `patients` dataset with the `checkups` dataset using `left_join()`
+
+```{r}
+left_join(patients, checkups)
+```
+
 :::
 
 ::: practice
@@ -270,6 +277,12 @@ vaccination_records <- tribble(
 ```
 
 Join the `patient_details` and `vaccination_records` datasets. You will need to use the `by` argument because the patient identifier columns have different names.
+
+```{r}
+left_join(patient_details, vaccination_records,
+          by = c("id_number" = "patient_code"))
+```
+
 :::
 
 # Types of joins
@@ -297,19 +310,19 @@ test_info
 
 ```{r}
 # Create and display modified test_info dataset
-____________________ <- tribble(
+test_info_xavier <- tribble(
   ~name,    ~test_date, ~result,
   "Alice",  "2023-06-05", "Negative",
   "Bob",    "2023-08-10", "Positive",
   "Xavier", "2023-05-02", "Negative")
-____________________
+test_info_xavier
 ```
 
 ‣ Now, perform a `left_join()`:
 
 ```{r}
 # Perform a left join with `demographic` as left dataframe
-left_join(x = ____________________, y = ____________________)
+left_join(x = demographic, y = test_info_xavier)
 # What will happen to Charlie and what will happen to Xavier?
 ```
 
@@ -327,7 +340,7 @@ left_join(x = ____________________, y = ____________________)
 
 ```{r render=reactable_5_rows}
 # Perform a left join with test_info_xavier as left dataframe
-left_join(____________________, _____________________  )
+left_join(test_info_xavier, demographic)
 ```
 
 ‣ Now, Xavier's data is included and Charlie's data is excluded. `left_join()` retains all rows from the left dataset, `test_info_xavier`
@@ -360,6 +373,11 @@ patient_demographics <- tribble(
 ```
 
 Use `left_join()` to merge these datasets, keeping only patients for whom we have demographic information. Think carefully about which dataset to put on the left.
+
+```{r}
+left_join(patient_demographics, disease_dx)
+```
+
 :::
 
 ------------------------------------------------------------------------
@@ -385,9 +403,10 @@ health_exp_2019
 ‣ Use `tb_2019_africa` as the **left dataframe** in the join to ensure all African countries are included in the final dataset
 
 ```{r}
-__________________ <- 
-  __________________ %>%
-  left_join(__________________)
+tb_health_exp_joined <- 
+  tb_2019_africa %>%
+  left_join(health_exp_2019)
+tb_health_exp_joined
 ```
 
 ‣ 47 rows retained for the 47 African countries.
@@ -438,6 +457,12 @@ country_continents
 Your goal is to add the continent and region data to the TB cases dataset.
 
 Which dataset should be the left dataframe, `x`? And which should be the right, `y`? Once you've decided, join the datasets appropriately using `left_join()`.
+
+```{r}
+left_join(tb_cases_children, country_continents,
+          by = c("country" = "country.name.en"))
+```
+
 :::
 
 ## `right_join()`
@@ -457,7 +482,7 @@ test_info_xavier
 ‣ Now, let's use `right_join()` with `demographic` as the right dataframe
 
 ```{r}
-right_join(_____________________, _____________________)
+right_join(test_info_xavier, demographic)
 ```
 
 ‣ All rows from `demographic` are kept (Alice, Bob and Charlie)
@@ -476,10 +501,10 @@ right_join(_____________________, _____________________)
 
 ```{r}
 # Using right_join
-__________(__________________, __________________)
+right_join(test_info_xavier, demographic)
 
 # Using left_join
-__________(__________________, __________________)
+left_join(demographic, test_info_xavier)
 ```
 
 ::: side-note
@@ -512,7 +537,7 @@ test_info_xavier
 ‣ Only `Alice` and `Bob` are in *both* datasets.
 
 ```{r}
-__________(____________________, ____________________)
+inner_join(demographic, test_info_xavier)
 ```
 
 ‣ `Charlie` was only in `demographic`, `Xavier` was only in `test_info`, so they are removed.
@@ -520,7 +545,7 @@ __________(____________________, ____________________)
 ‣ The order of datasets in `inner_join()` does *not* affect the result.
 
 ```{r}
-__________(____________________, ____________________ )
+inner_join(test_info_xavier, demographic)
 ```
 
 ::: practice
@@ -547,6 +572,11 @@ outcomes <- tribble(
 ```
 
 Which pathogens are common between both datasets? Use an `inner_join()` to join the dataframes, in order to keep only the pathogens that feature in both datasets.
+
+```{r}
+inner_join(total_inf, outcomes)
+```
+
 :::
 
 ‣ Now, let's return to our health expenditure and TB incidence rates data.
@@ -559,8 +589,9 @@ health_exp_2019
 ‣ Create a new dataframe, `inner_exp_tb`, to retain only countries present in both datasets.
 
 ```{r}
-__________ <- tb_2019_africa %>% 
-  inner_join(____________________)
+inner_exp_tb <- tb_2019_africa %>% 
+  inner_join(health_exp_2019)
+inner_exp_tb
 ```
 
 ‣ `inner_join()` is a commonly used join, but remember it can exclude a lot of data.
@@ -577,11 +608,17 @@ highest_exp <-
   health_exp_2019 %>% 
   arrange(-expend_usd) %>% 
   head(70)
+highest_exp
 ```
 
 Use an `inner_join()` to join this `highest_exp` dataset with the African TB incidence dataset, `tb_2019_africa`.
 
+```{r}
+inner_join(tb_2019_africa, highest_exp)
+```
+
 If you do this correctly, there will be just one row returned. Why?
+  The only country in the highest_exp data set located in Africa is "Seychelles"
 :::
 
 ## `full_join()`
@@ -599,7 +636,7 @@ test_info_xavier
 
 ```{r}
 # `full_join` with `demographic` as the primary dataset.
-full_join(___________________________)
+full_join(demographic, test_info_xavier)
 ```
 
 ‣ All rows are kept, preventing information loss.
@@ -607,7 +644,7 @@ full_join(___________________________)
 ‣ The order of datasets affects the order of columns, but not the retained information.
 
 ```{r}
-full_join(___________________________)
+full_join(test_info_xavier, demographic)
 ```
 
 ‣ Again, all data is retained with missing values filled as `NA`.
@@ -642,6 +679,12 @@ malaria_deaths <- tribble(
 ```
 
 Then, join the above tables using a `full_join()` in order to retain all information from the two datasets.
+
+```{r}
+full_join(malaria_inc, malaria_deaths) %>% 
+  arrange(year)
+```
+
 :::
 
 ‣ Now, let's revisit the TB dataset and health expenditure dataset.
@@ -655,7 +698,7 @@ health_exp_2019
 
 ```{r}
 full_tb_health <- tb_2019_africa %>%
- full_join(___________________________)
+ full_join(health_exp_2019)
 full_tb_health
 ```
 
