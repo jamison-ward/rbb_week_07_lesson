@@ -628,7 +628,8 @@ kidney <- tribble(
 
 ```{r}
 bp_kidney_dups <- blood_pressure %>% 
-  left_join(kidney, by = _____)
+  left_join(kidney, by = "name")
+bp_kidney_dups
 ```
 
 ‣ Result: Duplicated rows, leading to four rows per person.
@@ -643,7 +644,8 @@ bp_kidney_dups <- blood_pressure %>%
 
 ```{r}
 bp_kidney <- blood_pressure %>%
-  left_join(kidney, by = c(______, ______))
+  left_join(kidney, by = c("name", "time_point"))
+bp_kidney
 ```
 
 ‣ This gives us the desired outcome!
@@ -661,7 +663,7 @@ covid_screening
 
 ```{r}
 notif_covid <- tb_notifs %>%
-  left_join(covid_screening, by=c(______, ______))
+  left_join(covid_screening, by=c("state", "hc_type"))
 notif_covid
 ```
 
@@ -681,8 +683,8 @@ Follow these steps and fill in the blanked code fragments to complete the joinin
 
 ```{r eval=F}
 # Check mismatches
-anti_join(___________________)
-anti_join(___________________)
+anti_join(notif_covid, child)
+anti_join(child, notif_covid)
 ```
 
 2. Clean the mismatches in `child` by creating `child_fixed`. Use `case_when()` to update state names.
@@ -691,10 +693,10 @@ anti_join(___________________)
 # Clean mismatches
 child_fixed <- child %>%
   mutate(state = case_when(
-    state == "___________________" ~ "Arunachal Pradesh",
-    state == "___________________" ~ "Jammu & Kashmir",
-    state == "___________________" ~ "Kerala",
-    state == "___________________" ~ "Puducherry",
+    state == "ArunachalPradesh" ~ "Arunachal Pradesh",
+    state == "Jammu and Kashmir" ~ "Jammu & Kashmir",
+    state == "kerala" ~ "Kerala",
+    state == "Pondicherry" ~ "Puducherry",
     TRUE ~ state
   ))
 ```
@@ -712,7 +714,7 @@ anti_join(notif_covid, child_fixed)
 ```{r eval=F}
 # Join notif_covid and child_fixed
 join_1 <- notif_covid %>% 
-  left_join(child_fixed, by = _____________)
+  left_join(child_fixed, by = c("state", "hc_type"))
 ```
 
 5. Check for mismatches between `join_1` and `regions` using `anti_join()`.
@@ -731,7 +733,7 @@ You may notice that some states, e.g. Ladakh, are missing from the `regions` dat
 ```{r eval=F}
 # Final join
 final_join <- join_1 %>% 
-  left_join(___________________)
+  left_join(regions, by = c("state" = "state_UT"))
 ```
 
 The question said to avoid losing information, so you may be wondering why we used a `left_join()` of a `full_join()`? The outputs are actually the same in this case. Remember that `left_join()` keeps all rows from the left dataset. The missing states we commented in step 5 are present in the left,  `join_1` dataset, so they are not lost in the final join. And when you can choose between `left_join()` and `full_join()`, it is better to use `left_join()` as it is easier for your audience to reason about what your code is doing.
