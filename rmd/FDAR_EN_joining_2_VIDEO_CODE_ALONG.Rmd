@@ -8,7 +8,7 @@ output:
     css: !expr here::here("global/style/style.css")
     highlight: kate
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
   markdown: 
     wrap: 72
 ---
@@ -48,7 +48,7 @@ Now that we have a solid grasp on the different types of joins and how they work
 
 ```{r}
 if(!require(pacman)) install.packages("pacman")
-pacman::p_load(___________, ___________)
+pacman::p_load(tidyverse, countrycode)
 ```
 
 ## Pre-join data cleaning: addressing data inconsistencies
@@ -88,11 +88,11 @@ test_info
 ‣ Now let's join the two datasets.
 
 ```{r}
-left_join(___________, ___________, ___________)
+left_join(demographic, test_info, by = "name")
 ```
 
 ```{r}
-inner_join(___________, ___________, ___________)
+inner_join(demographic, test_info, by = "name")
 ```
 
 ‣ The joins are not perfect due to the case differences in names.
@@ -101,15 +101,15 @@ inner_join(___________, ___________, ___________)
 
 ```{r}
 test_info_title <- test_info %>%
-  mutate(name = str_to_title(___________)) #converts to title case
+  mutate(name = str_to_title(name)) #converts to title case
 ```
 
 ```{r}
-left_join(___________, ___________, ___________)
+left_join(demographic, test_info_title, by = "name")
 ```
 
 ```{r}
-inner_join(___________, ___________, ___________)
+inner_join(demographic, test_info_title, by = "name")
 ```
 
 **PRACTICE TIME!**
@@ -139,6 +139,9 @@ df2 <- tribble(
 
 inner_join(df1, df2)
 ```
+
+Solution: Remove the trailing space after "India" in df2, capitalize the "I"  in "indonesia" in df2, and correctly spell "Philipines" in df2
+
 :::
 
 ## Real Data Example 1: Key Typos
@@ -157,8 +160,8 @@ inner_join(df1, df2)
 tb_notifs <- read_csv(here("data/notif_TB_india_modified.csv"))
 
 tb_notifs_public <- tb_notifs %>% 
-  filter(__________ == "public") %>% #we want only public systems for now
-  select(______________)
+  filter(hc_type == "public") %>% #we want only public systems for now
+  select(-hc_type)
 
 tb_notifs_public
 ```
@@ -171,8 +174,8 @@ tb_notifs_public
 covid_screening <- read_csv(here("data/COVID_india_modified.csv")) 
 
 covid_screening_public <- covid_screening %>% 
-  filter(__________ == "________") %>% #we want only public systems for now
-  select(______________)
+  filter(hc_type == "public") %>% #we want only public systems for now
+  select(-hc_type)
 
 covid_screening_public
 ```
@@ -183,7 +186,7 @@ covid_screening_public
 
 ```{r}
 tb_notifs_and_covid_screening <- 
-  inner_join(____________, _____________)
+  inner_join(tb_notifs_public, covid_screening_public)
 
 tb_notifs_and_covid_screening
 ```
@@ -192,7 +195,7 @@ tb_notifs_and_covid_screening
 
 ```{r}
 tb_notifs_and_covid_screening %>% 
-  mutate(pct_covid_pos = 100 * ______ / ______) 
+  mutate(pct_covid_pos = 100 * tb_covid_pos / tb_notif_count) 
 ```
 
 ‣ Observation: We now only have 32 rows instead of 36. Why?
@@ -222,7 +225,7 @@ tb_notifs_and_covid_screening %>%
 ‣ Let's start by comparing the `state` values from two dataframes: `tb_notifs_public` and `covid_screening_public`
 
 ```{r}
-setdiff(______, ______)
+setdiff(tb_notifs_public$state, covid_screening_public$state)
 ```
 
 ‣ By putting the `tb_notifs_public` dataset first, we ask:
@@ -234,7 +237,7 @@ setdiff(______, ______)
 ‣ "Which values are in `covid_screening_public` but *not* in `tb_notifs_public`?"
 
 ```{r}
-setdiff(______, ______)
+setdiff(covid_screening_public$state, tb_notifs_public$state)
 ```
 
 ‣ We found values in `covid_screening_public` that have spelling errors or are written differently than in `tb_notifs_public`
@@ -244,14 +247,14 @@ setdiff(______, ______)
 ```{r}
 covid_screening_public_clean <- covid_screening_public %>% 
   mutate(state = 
-           case_when(_________________________, 
-                     _________________________, 
-                     _________________________, 
-                     _________________________,
+           case_when(state == "ArunachalPradesh" ~ "Arunachal Pradesh", 
+                     state == "Dadra & Nagar Haveli and Daman & Diu" ~ "Dadra and Nagar Haveli and Daman and Diu", 
+                     state == "tamil nadu" ~ "Tamil Nadu", 
+                     state == "Tri pura" ~ "Tripura", 
                      TRUE ~ state))
 
-setdiff(______, ______) 
-setdiff(______, ______)
+setdiff(tb_notifs_public$state, covid_screening_public_clean$state) 
+setdiff(covid_screening_public_clean$state, tb_notifs_public$state)
 ```
 
 ‣ Now, we have no differences in the region's names
@@ -259,7 +262,7 @@ setdiff(______, ______)
 ‣ We can join our datasets:
 
 ```{r, render = reactable_5_rows}
-inner_join(________________, __________________)
+inner_join(tb_notifs_public, covid_screening_public_clean)
 ```
 
 ## Identifying unmatched values with `antijoin()`
@@ -271,13 +274,13 @@ inner_join(________________, __________________)
 ‣ Let's find unmatched `state` values in `tb_notifs_public` compared to `covid_screening_public`
 
 ```{r, render = reactable_5_rows}
-anti_join(________________, ________________)
+anti_join(tb_notifs_public, covid_screening_public)
 ```
 
 ‣ And vice versa, for values in `covid_screening_public` but not in `tb_notifs_public`:
 
 ```{r, render = reactable_5_rows}
-anti_join(________________, ________________)
+anti_join(covid_screening_public, tb_notifs_public)
 ```
 
 ‣ This method provides more context for discrepancies
@@ -305,6 +308,26 @@ child_public
 2.  Make any necessary changes to the `child_public` dataframe to ensure that the values match.
 3.  Join the two datasets.
 4.  Identify which two regions have the highest proportion of TB cases in children.
+
+```{r}
+anti_join(tb_notifs_public, child_public)
+anti_join(child_public, tb_notifs_public)
+
+child_public_clean <- child_public %>% 
+  mutate(state =
+    case_when(state == "ArunachalPradesh" ~ "Arunachal Pradesh",
+              state == "Jammu and Kashmir" ~ "Jammu & Kashmir",
+              state == "kerala" ~ "Kerala",
+              state == "Pondicherry" ~ "Puducherry",
+              TRUE ~ state)
+  )
+
+inner_join(tb_notifs_public, child_public_clean) %>% 
+  arrange(-tb_child_notifs)
+
+# Uttar Pradesh and Madhya Pradesh have the highest number of pediatric TB cases
+```
+
 :::
 
 ## Real Data Example 2: Key Typos and Data Gaps
@@ -329,9 +352,9 @@ regions
 ‣ We'll use a **left join** to merge without losing rows from `covid_screening_public`.
 
 ```{r}
-covid_regions <- left_join(_____________, 
-                           _____________, 
-                           by = c("_____" = "________"))
+covid_regions <- left_join(covid_screening_public, 
+                           regions, 
+                           by = c("state" = "state_UT"))
 covid_regions
 ```
 
@@ -345,7 +368,7 @@ covid_regions %>%
 ‣ To understand why, we'll investigate using `anti_join()`.
 
 ```{r}
-anti_join(regi ons, covid_screening_public, by = c(______ = ______))
+anti_join(regions, covid_screening_public, by = c("state_UT" = "state"))
 ```
 
 ‣ 3 states are present in `regions` but absent in `covid_screening_public`.
@@ -353,7 +376,7 @@ anti_join(regi ons, covid_screening_public, by = c(______ = ______))
 ‣ Now, let's reverse the check.
 
 ```{r}
-anti_join(______, ______, by = c(______ = ______))
+anti_join(covid_screening_public, regions, by = c("state" = "state_UT"))
 ```
 
 ‣ Some mismatches are due to **key typos**, while others are **absent from the `regions` dataset**.
@@ -364,16 +387,18 @@ anti_join(______, ______, by = c(______ = ______))
 # Correct state typos:
 covid_screening_public_fixed <- covid_screening_public %>% 
   mutate(state = 
-           case_when(_____ == _____ ~ _____, 
+           case_when(state == "ArunachalPradesh" ~ "Arunachal Pradesh",
+                     state == "Dadra & Nagar Haveli and Daman & Diu" ~ "Dadra and Nagar Haveli and Daman and Diu",
+                     state == "Tri pura" ~ "Tripura",
                      TRUE ~ state))
 ```
 
 ‣ After applying the fixes, we perform another left join.
 
 ```{r}
-covid_regions_joined_fixed <- left_join(______, 
-                                        ______, 
-                                        by = c(______ = ______))
+covid_regions_joined_fixed <- left_join(covid_screening_public_fixed, 
+                                        regions, 
+                                        by = c("state" = "state_UT"))
 covid_regions_joined_fixed
 ```
 
@@ -429,7 +454,7 @@ Your task is to augment the TB cases data with the region and continent informat
 1.  Perform a `left_join` of `top_tb_cases_kids` with `country_regions` with the country names as the key. Identify which five countries fail to match correctly.
 
 ```{r eval = F}
-left_join(top_tb_cases_kids, _______________________, by = __________)
+left_join(top_tb_cases_kids, country_regions, by = c("country" = "country_name"))
 ```
 
 2.  Using the code below, amend the country names in `top_tb_cases_kids` using `case_when` to rectify mismatches:
@@ -451,16 +476,18 @@ top_tb_cases_kids_fixed
 Now attempt the join again using the revised dataset.
 
 ```{r eval = F}
-left_join(top_tb_cases_kids_fixed, _______________________, by = __________)
+left_join(top_tb_cases_kids_fixed, country_regions, by = c("country" = "country_name"))
 ```
 
 3.  Try another `left_join`, but this time use the three-letter ISO code as the key. Do those initial five countries now align properly?
 
 ```{r eval = F}
-left_join(top_tb_cases_kids, _______________________, by = __________)
+left_join(top_tb_cases_kids, country_regions, by = c("iso3" = "iso3c"))
 ```
 
 4.  What is the advantage of utilizing ISO codes when recording and storing country information?
+
+The ISO codes are short, standardized labels for each country, so they are unlikely to be inconsistent between data sets.
 :::
 
 ## One-to-many relationships
@@ -531,6 +558,11 @@ conditions <- tribble(
 ```
 
 If you use a `left_join()` to join these datasets, how many rows will be in the final dataframe? Try to figure it out and then perform the join to see if you were right!
+
+```{r}
+left_join(patient_info, conditions)
+```
+
 :::
 
 ‣ Explore the `tb_notifs` dataset
